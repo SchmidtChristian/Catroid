@@ -54,6 +54,9 @@ import org.catrobat.catroid.utils.ToastUtil;
 
 import java.util.Set;
 
+import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_DUAL;
+import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_LE;
+
 public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 
 	public static final String TAG = ConnectBluetoothDeviceActivity.class.getSimpleName();
@@ -135,7 +138,16 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 			if (android.bluetooth.BluetoothDevice.ACTION_FOUND.equals(action)) {
 				android.bluetooth.BluetoothDevice device = intent.getParcelableExtra(android.bluetooth.BluetoothDevice.EXTRA_DEVICE);
 				if ((device.getBondState() != android.bluetooth.BluetoothDevice.BOND_BONDED)) {
-					newDevicesArrayAdapter.add(device.getName() + "-" + device.getAddress());
+					String deviceInfo = device.getName() + "-" + device.getAddress();
+					if (device.getType() != DEVICE_TYPE_LE && newDevicesArrayAdapter.getPosition(deviceInfo) < 0) {
+						newDevicesArrayAdapter.add(deviceInfo);
+					}
+					if (device.getType() == DEVICE_TYPE_LE || device.getType() == DEVICE_TYPE_DUAL) {
+						String deviceInfoBLE = "BLE - " + deviceInfo;
+						if (newDevicesArrayAdapter.getPosition(deviceInfoBLE) < 0) {
+							newDevicesArrayAdapter.add(deviceInfoBLE);
+						}
+					}
 				}
 			} else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
 				setProgressBarIndeterminateVisibility(false);
