@@ -431,6 +431,9 @@ dependencies {
     // CAST
     implementation 'com.google.android.gms:play-services-cast:12.0.0'
 
+    // BLE
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
+
     // Analytics
     implementation 'com.google.android.gms:play-services-analytics:12.0.0'
 

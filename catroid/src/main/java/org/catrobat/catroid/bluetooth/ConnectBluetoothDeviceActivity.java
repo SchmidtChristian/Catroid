@@ -71,6 +71,7 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 	protected BluetoothDevice btDevice;
 
 	private BluetoothManager btManager;
+	private UartService mUartService;
 
 	private ArrayAdapter<String> pairedDevicesArrayAdapter;
 	private ArrayAdapter<String> newDevicesArrayAdapter;
@@ -125,7 +126,11 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 			if (address == null) {
 				return;
 			}
-			connectDevice(address);
+			if (((TextView) view).getText().toString().contains("BLE")) {
+				connectBLEDevice(address);
+			} else {
+				connectDevice(address);
+			}
 		}
 	};
 
@@ -285,10 +290,19 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 		new ConnectDeviceTask().execute(address);
 	}
 
+	private void connectBLEDevice(String address) {
+		mUartService = new UartService();
+		mUartService.initialize(getBaseContext());
+		mUartService.connect(address);
+	}
+
 	@Override
 	protected void onDestroy() {
 		if (btManager != null && btManager.getBluetoothAdapter() != null) {
 			btManager.getBluetoothAdapter().cancelDiscovery();
+			if (mUartService != null) {
+				mUartService.close();
+			}
 		}
 
 		this.unregisterReceiver(receiver);
