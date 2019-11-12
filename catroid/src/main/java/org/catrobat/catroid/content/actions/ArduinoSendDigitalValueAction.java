@@ -27,6 +27,7 @@ import android.util.Log;
 
 import com.badlogic.gdx.scenes.scene2d.actions.TemporalAction;
 
+import org.catrobat.catroid.ProjectManager;
 import org.catrobat.catroid.bluetooth.base.BluetoothDevice;
 import org.catrobat.catroid.common.CatroidService;
 import org.catrobat.catroid.common.ServiceProvider;
@@ -35,6 +36,10 @@ import org.catrobat.catroid.devices.arduino.Arduino;
 import org.catrobat.catroid.devices.arduino.ArduinoImpl;
 import org.catrobat.catroid.formulaeditor.Formula;
 import org.catrobat.catroid.formulaeditor.InterpretationException;
+import org.firmata4j.Pin;
+import org.firmata4j.firmata.FirmataDevice;
+
+import static org.firmata4j.Pin.Mode.OUTPUT;
 
 public class ArduinoSendDigitalValueAction extends TemporalAction {
 
@@ -82,6 +87,18 @@ public class ArduinoSendDigitalValueAction extends TemporalAction {
 		if (arduino != null) {
 			arduino.setDigitalArduinoPin(pin, value);
 		}
+		else
+		{
+			try {
+				FirmataDevice device = ProjectManager.getInstance().currentFirmataDevice;
+				Pin pin13 = device.getPin(pin);
+				pin13.setMode(OUTPUT);
+				pin13.setValue(value);
+			} catch (Exception e) {
+
+			}
+		}
+
 	}
 
 	public void setSprite(Sprite sprite) {

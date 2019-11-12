@@ -26,6 +26,7 @@ import android.content.Context;
 import android.support.annotation.VisibleForTesting;
 import android.util.Log;
 
+import org.catrobat.catroid.bluetooth.UartService;
 import org.catrobat.catroid.common.DefaultProjectHandler;
 import org.catrobat.catroid.common.DefaultProjectHandler.ProjectCreatorType;
 import org.catrobat.catroid.common.LookData;
@@ -56,6 +57,7 @@ import org.catrobat.catroid.io.StorageOperations;
 import org.catrobat.catroid.io.XstreamSerializer;
 import org.catrobat.catroid.physics.PhysicsCollisionListener;
 import org.catrobat.catroid.ui.settingsfragments.SettingsFragment;
+import org.firmata4j.firmata.FirmataDevice;
 
 import java.io.File;
 import java.io.IOException;
@@ -76,6 +78,9 @@ public final class ProjectManager {
 	private Scene currentlyPlayingScene;
 	private Scene startScene;
 	private Sprite currentSprite;
+
+	public FirmataDevice currentFirmataDevice;
+	public UartService currentUartService;
 
 	private ProjectManager() {
 	}

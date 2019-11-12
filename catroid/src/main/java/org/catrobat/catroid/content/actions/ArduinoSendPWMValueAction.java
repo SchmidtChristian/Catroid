@@ -27,14 +27,21 @@ import android.util.Log;
 
 import com.badlogic.gdx.scenes.scene2d.actions.TemporalAction;
 
+import org.catrobat.catroid.ProjectManager;
 import org.catrobat.catroid.bluetooth.base.BluetoothDevice;
 import org.catrobat.catroid.common.CatroidService;
 import org.catrobat.catroid.common.ServiceProvider;
+import org.catrobat.catroid.content.Project;
 import org.catrobat.catroid.content.Sprite;
 import org.catrobat.catroid.devices.arduino.Arduino;
 import org.catrobat.catroid.devices.arduino.ArduinoImpl;
 import org.catrobat.catroid.formulaeditor.Formula;
 import org.catrobat.catroid.formulaeditor.InterpretationException;
+import org.firmata4j.Pin;
+import org.firmata4j.firmata.FirmataDevice;
+
+import static org.firmata4j.Pin.Mode.OUTPUT;
+import static org.firmata4j.Pin.Mode.PWM;
 
 public class ArduinoSendPWMValueAction extends TemporalAction {
 
@@ -81,6 +88,15 @@ public class ArduinoSendPWMValueAction extends TemporalAction {
 		Arduino arduino = ServiceProvider.getService(CatroidService.BLUETOOTH_DEVICE_SERVICE).getDevice(BluetoothDevice.ARDUINO);
 		if (arduino != null) {
 			arduino.setAnalogArduinoPin(pin, value);
+		}
+		else {
+		try {
+			FirmataDevice device = ProjectManager.getInstance().currentFirmataDevice;
+			Pin target = device.getPin(pin);
+			target.setMode(PWM);
+			target.setValue(value);
+		} catch (Exception e) {
+		}
 		}
 	}
 

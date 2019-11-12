@@ -54,6 +54,7 @@ import org.catrobat.catroid.R;
 import org.catrobat.catroid.common.CatroidService;
 import org.catrobat.catroid.common.ScreenValues;
 import org.catrobat.catroid.common.ServiceProvider;
+import org.catrobat.catroid.content.Project;
 import org.catrobat.catroid.content.Scene;
 import org.catrobat.catroid.content.actions.AskAction;
 import org.catrobat.catroid.devices.raspberrypi.RaspberryPiService;
@@ -72,6 +73,7 @@ import org.catrobat.catroid.utils.FlashUtil;
 import org.catrobat.catroid.utils.ScreenValueHandler;
 import org.catrobat.catroid.utils.VibratorUtil;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -131,6 +133,18 @@ public class StageActivity extends AndroidApplication implements PermissionHandl
 	@Override
 	protected void onDestroy() {
 		StageLifeCycleController.stageDestroy(this);
+		if (ProjectManager.getInstance().currentFirmataDevice != null) {
+			try {
+				ProjectManager.getInstance().currentFirmataDevice.sendMessage((byte)0xFF);  //reset all firmata pins
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			ProjectManager.getInstance().currentFirmataDevice = null;
+		}
+		if (ProjectManager.getInstance().currentUartService != null) {
+			ProjectManager.getInstance().currentUartService.close();
+			ProjectManager.getInstance().currentUartService = null;
+		}
 		super.onDestroy();
 	}
 

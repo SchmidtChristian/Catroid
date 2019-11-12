@@ -433,6 +433,7 @@ dependencies {
 
     // BLE
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
+    implementation 'com.github.kurbatov:firmata4j:2.3.8'
 
     // Analytics
     implementation 'com.google.android.gms:play-services-analytics:12.0.0'
