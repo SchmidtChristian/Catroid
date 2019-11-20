@@ -317,6 +317,10 @@ dependencies {
     // Drone
     implementation 'com.parrot:arsdk:3.12.6'
 
+    // BLE
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
+    implementation 'com.github.kurbatov:firmata4j:2.3.8'
+
     // CAST
     implementation 'com.google.android.gms:play-services-cast:12.0.0'
 

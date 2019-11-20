@@ -43,6 +43,7 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import org.catrobat.catroid.ProjectManager;
 import org.catrobat.catroid.R;
 import org.catrobat.catroid.bluetooth.base.BluetoothConnection;
 import org.catrobat.catroid.bluetooth.base.BluetoothConnectionFactory;
@@ -53,9 +54,16 @@ import org.catrobat.catroid.common.CatroidService;
 import org.catrobat.catroid.common.ServiceProvider;
 import org.catrobat.catroid.devices.mindstorms.MindstormsException;
 import org.catrobat.catroid.utils.ToastUtil;
+import org.firmata4j.Parser;
+import org.firmata4j.firmata.FirmataDevice;
+import org.firmata4j.firmata.FirmataMessageFactory;
+import org.firmata4j.transport.TransportInterface;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Set;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_CLASSIC;
 import static android.bluetooth.BluetoothDevice.DEVICE_TYPE_DUAL;
@@ -78,6 +86,10 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 
 	private ArrayAdapter<String> pairedDevicesArrayAdapter;
 	private ArrayAdapter<Pair> newDevicesArrayAdapter;
+
+	private Parser firmataParser;
+	ProgressDialog connectingProgressDialog;
+	private boolean isBLEConnectionEstablished = false;
 
 	private static BluetoothDeviceFactory getDeviceFactory() {
 		if (btDeviceFactory == null) {
@@ -131,6 +143,9 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 			}
 			if (pair.second.equals(DEVICE_TYPE_CLASSIC)) {
 				connectDevice(address);
+			}
+			if (pair.second.equals(DEVICE_TYPE_LE)) {
+				connectBLEDevice(address);
 			}
 		}
 	};
@@ -269,6 +284,7 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 		filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
 		this.registerReceiver(receiver, filter);
 
+		LocalBroadcastManager.getInstance(this).registerReceiver(UARTStatusChangeReceiver, makeGattUpdateIntentFilter());
 		int bluetoothState = activateBluetooth();
 		if (bluetoothState == BluetoothManager.BLUETOOTH_ALREADY_ON) {
 			listAndSelectDevices();
@@ -305,6 +321,17 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 		new ConnectDeviceTask().execute(address);
 	}
 
+	private void connectBLEDevice(String address) {
+		btManager.getBluetoothAdapter().cancelDiscovery();
+		ProjectManager.getInstance().currentUartService = new UartService();
+		ProjectManager.getInstance().currentUartService.initialize(getBaseContext());
+		ProjectManager.getInstance().currentUartService.connect(address);
+		ProjectManager.getInstance().currentFirmataDevice = new FirmataDevice(iSerial);
+		connectingProgressDialog = ProgressDialog.show(ConnectBluetoothDeviceActivity.this, "",
+				getResources().getString(R.string.connecting_please_wait), true);
+		setResult(RESULT_OK);
+	}
+
 	@Override
 	protected void onDestroy() {
 		if (btManager != null && btManager.getBluetoothAdapter() != null) {
@@ -312,6 +339,7 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 		}
 
 		this.unregisterReceiver(receiver);
+		LocalBroadcastManager.getInstance(this).unregisterReceiver(UARTStatusChangeReceiver);
 		super.onDestroy();
 	}
 
@@ -358,5 +386,86 @@ public class ConnectBluetoothDeviceActivity extends AppCompatActivity {
 				finish();
 				break;
 		}
+	}
+
+	TransportInterface iSerial = new TransportInterface() {
+		@Override
+		public void start() {
+		}
+
+		@Override
+		public void stop() {
+		}
+
+		@Override
+		public void write(byte[] bytes) {
+			ProjectManager.getInstance().currentUartService.writeRXCharacteristic(bytes);
+		}
+
+		@Override
+		public void setParser(Parser parser) {
+			firmataParser = parser;
+			firmataParser.start();
+		}
+	};
+
+	BroadcastReceiver UARTStatusChangeReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			String action = intent.getAction();
+			if (action.equals(UartService.ACTION_GATT_CONNECTED)) {
+				isBLEConnectionEstablished = true;
+			} else if ( action.equals(UartService.ACTION_GATT_DISCONNECTED)) {
+				if(isBLEConnectionEstablished) {
+					isBLEConnectionEstablished = false;
+				} else {
+					connectingProgressDialog.dismiss();
+				}
+				ToastUtil.showError(getApplicationContext(), "TIMEOUT ERROR");
+
+			} else if (action.equals(UartService.ACTION_GATT_SERVICES_DISCOVERED)) {
+				ProjectManager.getInstance().currentUartService.enableTXNotification();
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
+				new Thread(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							ProjectManager.getInstance().currentFirmataDevice.start();
+							ProjectManager.getInstance().currentFirmataDevice.ensureInitializationIsDone();
+							ProjectManager.getInstance().currentFirmataDevice.sendMessage(FirmataMessageFactory.analogReport(false));
+							connectingProgressDialog.dismiss();
+							finish();
+						} catch (IOException e) {
+							connectingProgressDialog.dismiss();
+							isBLEConnectionEstablished = false;
+							ToastUtil.showError(getApplicationContext(), "TIMEOUT ERROR");
+						} catch (InterruptedException e) {
+							connectingProgressDialog.dismiss();
+							isBLEConnectionEstablished = false;
+							ToastUtil.showError(getApplicationContext(), "TIMEOUT ERROR");
+						}
+					}
+				}).start();
+			} else if (action.equals(UartService.ACTION_DATA_AVAILABLE)) {
+				byte[] myStream = intent.getByteArrayExtra(UartService.EXTRA_DATA);
+				firmataParser.parse(myStream);
+			}
+		}
+	};
+
+	private static IntentFilter makeGattUpdateIntentFilter() {
+		final IntentFilter intentFilter = new IntentFilter();
+		intentFilter.addAction(UartService.ACTION_GATT_CONNECTED);
+		intentFilter.addAction(UartService.ACTION_GATT_DISCONNECTED);
+		intentFilter.addAction(UartService.ACTION_GATT_SERVICES_DISCOVERED);
+		intentFilter.addAction(UartService.ACTION_DATA_AVAILABLE);
+		intentFilter.addAction(UartService.EXTRA_DATA);
+		intentFilter.addAction(UartService.DEVICE_DOES_NOT_SUPPORT_UART);
+		return intentFilter;
 	}
 }
